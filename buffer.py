@@ -20,10 +20,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import tempfile
 
 from core.utils import *
 from core.webengine import BrowserBuffer
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QUrl, QTimer, QFileSystemWatcher
 
 
 class AppBuffer(BrowserBuffer):
@@ -31,7 +32,18 @@ class AppBuffer(BrowserBuffer):
         BrowserBuffer.__init__(self, buffer_id, url, arguments, False)
 
         self.url = url
+        self.html_file = self.get_html_file_path()
+
+        self.file_watcher = QFileSystemWatcher()
+        self.file_watcher.addPath(self.html_file)
+        self.file_watcher.fileChanged.connect(self.update_file)
+
         self.load_org_html_file()
+
+    def get_html_file_path(self):
+        org_filename = os.path.basename(self.url)
+        html_filename = os.path.splitext(org_filename)[0] + ".html"
+        return os.path.join(tempfile.gettempdir(), html_filename)
 
     @interactive
     def update_theme(self):
@@ -58,11 +70,11 @@ class AppBuffer(BrowserBuffer):
                                                  "darkSchemeBackgroundColor": background_color,
                                                  "darkSchemeForegroundColor": foreground_color})
 
-        with open(os.path.splitext(self.url)[0]+".html", "r") as f:
+        with open(self.html_file, "r") as f:
             html = f.read().replace("</style>", "\n  a, p, h1, h2, h3, h4, h5, h6, li { color: " + f'''{foreground_color};''' + "}\n\n" + "  body { background: " + f'''{background_color};''' + "}\n</style>")
 
             self.buffer_widget.setHtml(html, QUrl("file://"))
 
-    def update_with_data(self, update_data):
+    def update_file(self, file):
         self.load_org_html_file()
-        self.refresh_page()
+        QTimer.singleShot(500, lambda : self.buffer_widget.scroll_to_bottom())

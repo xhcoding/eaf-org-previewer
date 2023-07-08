@@ -197,9 +197,14 @@ configured by darkreader.js."
 
 (defvar eaf-org-killed-file-list '())
 
+(defun eaf--org-html-file (org-file)
+  "Return html-file path by org-file"
+  (expand-file-name (concat (file-name-sans-extension (file-name-nondirectory org-file)) ".html")
+                    (temporary-file-directory)))
+
 (defun eaf--org-delete-preview-file (org-file)
   "Delete the org-preview file when given ORG-FILE name."
-  (let ((org-html-file (concat (file-name-sans-extension org-file) ".html")))
+  (let ((org-html-file (eaf--org-html-file org-file)))
     (when (file-exists-p org-html-file)
       (delete-file org-html-file)
       (message "[EAF] Cleaned org-preview file %s (%s)." org-html-file org-file))))
@@ -227,8 +232,7 @@ configured by darkreader.js."
   (when (eaf-epc-live-p eaf-epc-process)
     (ignore-errors
       ;; eaf-org-file-list?
-      (org-html-export-to-html)
-      (eaf-call-async "update_buffer_with_url" eaf-org-previewer-module-path (buffer-file-name) "")
+      (org-export-to-file 'html (eaf--org-html-file (buffer-file-name)) t)
       (message "[EAF] Export %s to HTML." (buffer-file-name)))))
 
 (defun eaf--org-preview-display (buf)
@@ -238,7 +242,7 @@ configured by darkreader.js."
     ;; Find file first, because `find-file' will trigger `kill-buffer' operation.
     (save-excursion
       (find-file url)
-      (org-html-export-to-html)
+      (org-export-to-file 'html (eaf--org-html-file (buffer-file-name)) t)
       (add-hook 'after-save-hook #'eaf--org-preview-monitor-buffer-save nil t)
       (add-hook 'kill-buffer-hook #'eaf--org-preview-monitor-kill nil t))
     ;; Add file name to `eaf-org-file-list' after command `find-file'.
